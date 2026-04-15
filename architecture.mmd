@@ -1,0 +1,20 @@
+flowchart LR
+    subgraph Browser["Browser (Client)"]
+        UI["SQL Workbench\nindex.html"]
+    end
+
+    subgraph API["API Proxy (FastAPI · :8000)"]
+        direction TB
+        V["Validation Layer\n• keyword blocklist\n• length check\n• empty check"]
+        E["Execution Layer\n• sqlite3.connect()\n• cursor.execute()"]
+        V --> E
+    end
+
+    subgraph DB["Data Store"]
+        S["SQLite\nfintech.db"]
+    end
+
+    UI -- "POST /query\n{sql: '...'}\nHTTP + JSON" --> V
+    E -- "SQL" --> S
+    S -- "rows / rowcount" --> E
+    E -- "JSON response\n{status, columns, rows}" --> UI

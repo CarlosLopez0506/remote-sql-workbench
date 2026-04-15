@@ -1,0 +1,31 @@
+// Remote SQL Architect and Explorer
+// Fintech Schema — 3NF
+// Paste this at dbdiagram.io to generate the ERD
+
+Table users {
+  id         integer   [pk, increment, note: 'Primary key']
+  email      text      [not null, unique, note: 'Customer email']
+  full_name  text      [not null]
+  phone      text
+  created_at text      [not null, default: `datetime('now')`]
+}
+
+Table accounts {
+  id             integer [pk, increment]
+  user_id        integer [not null, ref: > users.id]
+  account_number text    [not null, unique]
+  account_type   text    [not null, note: 'CHECKING | SAVINGS | INVESTMENT']
+  balance        real    [not null, default: 0.00]
+  status         text    [not null, default: 'ACTIVE', note: 'ACTIVE | FROZEN | CLOSED']
+  opened_at      text    [not null, default: `datetime('now')`]
+}
+
+Table transactions {
+  id          integer [pk, increment]
+  account_id  integer [not null, ref: > accounts.id]
+  amount      real    [not null, note: 'CHECK > 0']
+  type        text    [not null, note: 'CREDIT | DEBIT']
+  description text
+  status      text    [not null, default: 'COMPLETED', note: 'PENDING | COMPLETED | FAILED | REVERSED']
+  created_at  text    [not null, default: `datetime('now')`]
+}

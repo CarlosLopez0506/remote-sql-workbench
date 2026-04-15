@@ -1,0 +1,31 @@
+erDiagram
+    users {
+        INTEGER id PK
+        TEXT email UK "NOT NULL UNIQUE"
+        TEXT full_name "NOT NULL"
+        TEXT phone
+        TEXT created_at "DEFAULT now()"
+    }
+
+    accounts {
+        INTEGER id PK
+        INTEGER user_id FK
+        TEXT account_number UK "NOT NULL UNIQUE"
+        TEXT account_type "CHECKING | SAVINGS | INVESTMENT"
+        REAL balance "DEFAULT 0.00"
+        TEXT status "ACTIVE | FROZEN | CLOSED"
+        TEXT opened_at "DEFAULT now()"
+    }
+
+    transactions {
+        INTEGER id PK
+        INTEGER account_id FK
+        REAL amount "CHECK > 0"
+        TEXT type "CREDIT | DEBIT"
+        TEXT description
+        TEXT status "PENDING | COMPLETED | FAILED | REVERSED"
+        TEXT created_at "DEFAULT now()"
+    }
+
+    users ||--o{ accounts : "has"
+    accounts ||--o{ transactions : "records"
