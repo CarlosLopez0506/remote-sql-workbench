@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SQL Workbench — Fintech DB</title>
+  <style>
+    /* ── Reset & base ─────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #0f1117;
+      --surface:    #1a1d27;
+      --border:     #2e3147;
+      --accent:     #4f8ef7;
+      --accent-dim: #2d5bbf;
+      --success:    #2ecc71;
+      --error:      #e74c3c;
+      --warning:    #f39c12;
+      --text:       #dde1f0;
+      --text-dim:   #7a82a8;
+      --font-mono:  'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      --radius:     8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ───────────────────────────────────── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header .logo {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+    }
+    header .subtitle {
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    header .db-badge {
+      margin-left: auto;
+      background: #1f2535;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    header .db-badge span { color: var(--success); }
+
+    /* ── Main layout ──────────────────────────────── */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 0;
+      padding: 20px 24px;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ── Editor panel ─────────────────────────────── */
+    .editor-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .editor-header {
+      background: #13162080;
+      border-bottom: 1px solid var(--border);
+      padding: 8px 14px;
+      font-size: 11px;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .editor-header .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    textarea#sql-input {
+      display: block;
+      width: 100%;
+      min-height: 140px;
+      background: transparent;
+      border: none;
+      outline: none;
+      resize: vertical;
+      padding: 14px 16px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.6;
+      caret-color: var(--accent);
+    }
+    textarea#sql-input::placeholder { color: var(--text-dim); }
+
+    /* ── Toolbar ──────────────────────────────────── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    button {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      border: none;
+      border-radius: var(--radius);
+      padding: 9px 20px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    button:active { transform: scale(0.97); }
+    #btn-execute {
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+    }
+    #btn-execute:hover { background: var(--accent-dim); }
+    #btn-execute:disabled { background: #374060; color: var(--text-dim); cursor: not-allowed; transform: none; }
+    #btn-clear {
+      background: #242840;
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+    }
+    #btn-clear:hover { background: #2e3455; color: var(--text); }
+    .hint {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    /* ── Status bar ───────────────────────────────── */
+    #status-bar {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      margin-bottom: 14px;
+      border: 1px solid transparent;
+    }
+    #status-bar.success {
+      display: flex;
+      background: #0d2b1c;
+      border-color: #1a5c38;
+      color: var(--success);
+    }
+    #status-bar.error {
+      display: flex;
+      background: #2b0d0d;
+      border-color: #5c1a1a;
+      color: var(--error);
+    }
+    #status-bar.info {
+      display: flex;
+      background: #1a1f35;
+      border-color: var(--border);
+      color: var(--text-dim);
+    }
+    .status-icon { font-size: 16px; }
+
+    /* ── Results panel ────────────────────────────── */
+    #results-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+    }
+    .results-header {
+      background: #13162080;
+      border-bottom: 1px solid var(--border);
+      padding: 8px 14px;
+      font-size: 11px;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #row-count-badge {
+      margin-left: auto;
+      background: #1f2535;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 11px;
+    }
+    .table-wrapper {
+      overflow: auto;
+      flex: 1;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    thead th {
+      background: #13162080;
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    tbody tr { border-bottom: 1px solid #1e2136; }
+    tbody tr:hover { background: #1f2438; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody td {
+      padding: 9px 14px;
+      color: var(--text);
+      vertical-align: top;
+    }
+    tbody td.null-value { color: var(--text-dim); font-style: italic; }
+
+    /* ── Empty / loading states ───────────────────── */
+    .placeholder {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-dim);
+      gap: 10px;
+      padding: 40px;
+    }
+    .placeholder .icon { font-size: 36px; opacity: 0.4; }
+    .placeholder p { font-size: 13px; }
+
+    /* ── Spinner ──────────────────────────────────── */
+    .spinner {
+      width: 22px; height: 22px;
+      border: 3px solid #2e3455;
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Quick query buttons ──────────────────────── */
+    .quick-queries {
+      margin-bottom: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .quick-queries span {
+      font-size: 11px;
+      color: var(--text-dim);
+      align-self: center;
+      margin-right: 4px;
+    }
+    .quick-btn {
+      background: #1e2236;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 11px;
+      padding: 5px 12px;
+      border-radius: 4px;
+    }
+    .quick-btn:hover { background: #272d48; color: var(--text); }
+  </style>
+</head>
+<body>
+
+  <!-- ── Header ── -->
+  <header>
+    <div>
+      <div class="logo">⚡ SQL Workbench</div>
+      <div class="subtitle">Remote SQL Architect and Explorer</div>
+    </div>
+    <div class="db-badge">fintech.db &nbsp;·&nbsp; <span>●</span> SQLite</div>
+  </header>
+
+  <!-- ── Main ── -->
+  <main>
+
+    <!-- Editor -->
+    <div class="editor-panel">
+      <div class="editor-header">
+        <span class="dot" style="background:#ff5f57"></span>
+        <span class="dot" style="background:#febc2e"></span>
+        <span class="dot" style="background:#28c840"></span>
+        &nbsp;query.sql
+      </div>
+      <textarea
+        id="sql-input"
+        spellcheck="false"
+        placeholder="-- Write your SQL here and press Execute (or Ctrl+Enter)&#10;SELECT * FROM users LIMIT 10;"
+      ></textarea>
+    </div>
+
+    <!-- Toolbar + quick queries -->
+    <div>
+      <div class="toolbar">
+        <button id="btn-execute">▶ Execute</button>
+        <button id="btn-clear">✕ Clear</button>
+        <span class="hint">Ctrl+Enter to run</span>
+      </div>
+
+      <div class="quick-queries">
+        <span>Quick:</span>
+        <button class="quick-btn" data-query="SELECT * FROM users;">All users</button>
+        <button class="quick-btn" data-query="SELECT * FROM accounts;">All accounts</button>
+        <button class="quick-btn" data-query="SELECT * FROM transactions ORDER BY created_at DESC;">Transactions</button>
+        <button class="quick-btn" data-query="SELECT u.full_name, a.account_number, a.account_type, a.balance
+FROM users u
+JOIN accounts a ON u.id = a.user_id
+ORDER BY a.balance DESC;">Users + Accounts</button>
+        <button class="quick-btn" data-query="SELECT a.account_number, SUM(CASE WHEN t.type='CREDIT' THEN t.amount ELSE 0 END) AS total_credits,
+       SUM(CASE WHEN t.type='DEBIT' THEN t.amount ELSE 0 END) AS total_debits
+FROM accounts a
+JOIN transactions t ON a.id = t.account_id
+GROUP BY a.account_number;">Credit vs Debit</button>
+      </div>
+
+      <!-- Status bar -->
+      <div id="status-bar">
+        <span class="status-icon" id="status-icon"></span>
+        <span id="status-text"></span>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="results-panel">
+      <div class="results-header">
+        RESULTS
+        <span id="row-count-badge" style="display:none"></span>
+      </div>
+      <div id="results-body" class="table-wrapper">
+        <div class="placeholder">
+          <span class="icon">🗄️</span>
+          <p>Execute a query to see results here.</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    const API_URL    = 'http://localhost:8000/query';
+    const textarea   = document.getElementById('sql-input');
+    const btnExecute = document.getElementById('btn-execute');
+    const btnClear   = document.getElementById('btn-clear');
+    const statusBar  = document.getElementById('status-bar');
+    const statusIcon = document.getElementById('status-icon');
+    const statusText = document.getElementById('status-text');
+    const resultsBody = document.getElementById('results-body');
+    const rowBadge   = document.getElementById('row-count-badge');
+
+    // ── Helpers ──────────────────────────────────────────────────
+    function setStatus(type, icon, message) {
+      statusBar.className = type;
+      statusIcon.textContent = icon;
+      statusText.textContent = message;
+    }
+
+    function setLoading(isLoading) {
+      btnExecute.disabled = isLoading;
+      if (isLoading) {
+        btnExecute.innerHTML = '<span class="spinner" style="display:inline-block;vertical-align:middle;margin-right:6px"></span> Running…';
+      } else {
+        btnExecute.innerHTML = '▶ Execute';
+      }
+    }
+
+    function clearResults() {
+      resultsBody.innerHTML = `
+        <div class="placeholder">
+          <span class="icon">🗄️</span>
+          <p>Execute a query to see results here.</p>
+        </div>`;
+      rowBadge.style.display = 'none';
+      statusBar.className = '';
+      statusBar.style.display = 'none';
+    }
+
+    function buildTable(columns, rows) {
+      if (!columns || columns.length === 0) return null;
+
+      const table = document.createElement('table');
+
+      // Header
+      const thead = table.createTHead();
+      const hr = thead.insertRow();
+      columns.forEach(col => {
+        const th = document.createElement('th');
+        th.textContent = col;
+        hr.appendChild(th);
+      });
+
+      // Body
+      const tbody = table.createTBody();
+      rows.forEach(row => {
+        const tr = tbody.insertRow();
+        row.forEach(cell => {
+          const td = tr.insertCell();
+          if (cell === null || cell === undefined) {
+            td.textContent = 'NULL';
+            td.classList.add('null-value');
+          } else {
+            td.textContent = String(cell);
+          }
+        });
+      });
+
+      return table;
+    }
+
+    // ── Execute ───────────────────────────────────────────────────
+    async function executeQuery() {
+      const sql = textarea.value.trim();
+      if (!sql) {
+        setStatus('error', '✗', 'Please enter a SQL query.');
+        return;
+      }
+
+      setLoading(true);
+      setStatus('info', '', 'Running query…');
+      resultsBody.innerHTML = `
+        <div class="placeholder">
+          <div class="spinner"></div>
+          <p>Executing…</p>
+        </div>`;
+      rowBadge.style.display = 'none';
+
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sql }),
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+          if (data.columns && data.columns.length > 0) {
+            // SELECT result
+            const table = buildTable(data.columns, data.rows);
+            resultsBody.innerHTML = '';
+            if (table) {
+              resultsBody.appendChild(table);
+            } else {
+              resultsBody.innerHTML = `<div class="placeholder"><p>No data returned.</p></div>`;
+            }
+            rowBadge.style.display = 'inline';
+            rowBadge.textContent = `${data.rowcount} row${data.rowcount !== 1 ? 's' : ''}`;
+            setStatus('success', '✓', `Query completed — ${data.rowcount} row${data.rowcount !== 1 ? 's' : ''} returned.`);
+          } else {
+            // Non-SELECT
+            resultsBody.innerHTML = `<div class="placeholder"><span class="icon">✓</span><p>${data.message || 'Query executed successfully.'}</p></div>`;
+            setStatus('success', '✓', data.message || 'Query executed successfully.');
+          }
+        } else {
+          // API-level error (validation or DB error)
+          resultsBody.innerHTML = `
+            <div class="placeholder">
+              <span class="icon" style="color:var(--error)">✗</span>
+              <p style="color:var(--error)">${escapeHtml(data.message)}</p>
+            </div>`;
+          setStatus('error', '✗', data.message);
+        }
+
+      } catch (err) {
+        // Network / fetch error
+        const msg = err.message.includes('Failed to fetch')
+          ? 'Cannot reach the API server. Make sure it is running on http://localhost:8000.'
+          : `Network error: ${err.message}`;
+        resultsBody.innerHTML = `
+          <div class="placeholder">
+            <span class="icon" style="color:var(--error)">⚡</span>
+            <p style="color:var(--error)">${escapeHtml(msg)}</p>
+          </div>`;
+        setStatus('error', '⚡', msg);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // ── Event listeners ───────────────────────────────────────────
+    btnExecute.addEventListener('click', executeQuery);
+
+    btnClear.addEventListener('click', () => {
+      textarea.value = '';
+      clearResults();
+      textarea.focus();
+    });
+
+    textarea.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        executeQuery();
+      }
+    });
+
+    // Quick query buttons
+    document.querySelectorAll('.quick-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        textarea.value = btn.dataset.query;
+        textarea.focus();
+        executeQuery();
+      });
+    });
+  </script>
+</body>
+</html>
