@@ -9,50 +9,27 @@ A lightweight SQL Workbench that lets a user send raw SQL commands from a browse
 
 ## Architecture
 
-```
-┌─────────────────────────────┐
-│      Browser (Client)       │
-│                             │
-│   ┌─────────────────────┐   │
-│   │  SQL Workbench UI   │   │
-│   │   index.html        │   │
-│   └────────┬────────────┘   │
-└────────────│────────────────┘
-             │  HTTP POST /query
-             │  Content-Type: application/json
-             │  { "sql": "SELECT * FROM users" }
-             ▼
-┌─────────────────────────────┐
-│    API Proxy (FastAPI)      │
-│    localhost:8000           │
-│                             │
-│  ┌───────────────────────┐  │
-│  │   Validation Layer    │  │
-│  │  • empty check        │  │
-│  │  • length limit       │  │
-│  │  • keyword blocklist  │  │
-│  └──────────┬────────────┘  │
-│             │               │
-│  ┌──────────▼────────────┐  │
-│  │   Execution Layer     │  │
-│  │   sqlite3.execute()   │  │
-│  └──────────┬────────────┘  │
-└─────────────│───────────────┘
-             │  SQL
-             ▼
-┌─────────────────────────────┐
-│   SQLite Database           │
-│   fintech.db                │
-│                             │
-│   • users                   │
-│   • accounts                │
-│   • transactions            │
-└─────────────────────────────┘
-             │
-             │  rows / rowcount
-             ▼
-      JSON response back
-  { "status", "columns", "rows" }
+```mermaid
+flowchart LR
+    subgraph Browser["Browser (Client)"]
+        UI["SQL Workbench<br/>index.html"]
+    end
+
+    subgraph API["API Proxy (FastAPI · :8000)"]
+        direction TB
+        V["Validation Layer<br/>• keyword blocklist<br/>• length check<br/>• empty check"]
+        E["Execution Layer<br/>• sqlite3.connect()<br/>• cursor.execute()"]
+        V --> E
+    end
+
+    subgraph DB["Data Store"]
+        S["SQLite<br/>fintech.db"]
+    end
+
+    UI -- "POST /query<br/>{sql: '...'}<br/>HTTP + JSON" --> V
+    E -- "SQL" --> S
+    S -- "rows / rowcount" --> E
+    E -- "JSON response<br/>{status, columns, rows}" --> UI
 ```
 
 ### Communication Flow
@@ -90,6 +67,38 @@ See [`schema.sql`](schema.sql) for the full DDL and [`seed.sql`](seed.sql) for m
 **Relationships:**
 - `users` 1 → N `accounts` (via `accounts.user_id`)
 - `accounts` 1 → N `transactions` (via `transactions.account_id`)
+
+```mermaid
+erDiagram
+    users {
+        INTEGER id PK
+        TEXT email UK
+        TEXT full_name
+        TEXT phone
+        TEXT created_at
+    }
+    accounts {
+        INTEGER id PK
+        INTEGER user_id FK
+        TEXT account_number UK
+        TEXT account_type
+        REAL balance
+        TEXT status
+        TEXT opened_at
+    }
+    transactions {
+        INTEGER id PK
+        INTEGER account_id FK
+        REAL amount
+        TEXT type
+        TEXT description
+        TEXT status
+        TEXT created_at
+    }
+
+    users ||--o{ accounts : "has"
+    accounts ||--o{ transactions : "records"
+```
 
 ---
 
