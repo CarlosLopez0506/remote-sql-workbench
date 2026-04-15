@@ -2,3 +2,5 @@ fintech.db
 __pycache__/
 *.pyc
 .env
+*Zone.Identifier
+activity*
